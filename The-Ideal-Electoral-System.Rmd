@@ -1,0 +1,91 @@
+---
+title: "The Ideal Electoral System"
+author: "Daniel K Baissa & Joshua Reichardt"
+date: "3/28/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(stargazer)
+library(foreign)
+
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jdk-17.0.1')
+
+#Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jdk-11.0.1') #laptop
+require(rJava)
+options(java.parameters = "-Xmx75g")     # or 8g, or larger than this, ...
+require(bartMachine)
+set_bart_machine_num_cores(30)
+
+df <- read.dta("Data/datar.dta")
+```
+
+# Electoral Engineering
+
+Today we have access to machine learning models that can help use greatly improve our ability to develop electoral systems.
+
+# Carey and Hix Replication 
+
+I will start by replicating a model from the Carry and Hix dataset in order to ensure that the data and models line up before improving the specification.
+
+### The first model from Carey and Hix 2011
+
+Here I will replicate the coefficients for their model and omit the Panel Corrected Standard Errors
+
+```{r}
+
+CH <- df %>% 
+  select(disprop, dist_mag_medians, dm_asym, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me)
+
+m.lm <- lm(disprop ~ ., data = CH)
+summary(m.lm)
+
+
+```
+
+### Enter BART
+
+Now let's run Carey and Hix's model using Bayesian Additive Regression Trees. The key difference is that we are going to remove their asymptotic term from the model since BART will automatically allow for curvilinear fits. Then we will rename the y variable "y".
+
+```{r}
+CH_for_BART <- df %>% 
+  select(disprop, 
+         dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>% 
+  na.omit() %>% 
+  rename(y = disprop)
+```
+
+```{r}
+m.BART <- bartMachine(Xy = CH_for_BART)
+```
+
+```{r}
+plot_convergence_diagnostics(m.BART)
+
+```
+
+```{r}
+plot_y_vs_yhat(m.BART)
+
+```
+
+```{r}
+  try(
+
+    for (i in 1:length(m.BART[["training_data_features"]])) {
+  
+        pd_plot(m.BART,  m.BART[["training_data_features"]][i])
+
+    }
+  )
+```
+
