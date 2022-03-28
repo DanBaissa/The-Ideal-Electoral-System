@@ -54,18 +54,23 @@ summary(m.lm)
 Now let's run Carey and Hix's model using Bayesian Additive Regression Trees. The key difference is that we are going to remove their asymptotic term from the model since BART will automatically allow for curvilinear fits. Then we will rename the y variable "y".
 
 ```{r}
-CH_for_BART <- df %>% 
+X <- df %>% 
   select(disprop, 
          dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
          ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
          population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
          col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>% 
-  na.omit() %>% 
-  rename(y = disprop)
+  na.omit()
+
+y <- X$disprop
+
+X <- X %>% 
+  select(!disprop)
 ```
 
 ```{r}
-m.BART <- bartMachine(Xy = CH_for_BART)
+m.BART <- bartMachine(X = X, y = y)
+m.BART
 ```
 
 ```{r}
