@@ -1,6 +1,6 @@
 ---
 title: "The Ideal Electoral System"
-author: "Daniel K Baissa & Joshua Reichardt"
+author: "Daniel K Baissa"
 date: "3/28/2022"
 output: pdf_document
 ---
@@ -73,24 +73,219 @@ m.BART <- bartMachine(X = X, y = y)
 m.BART
 ```
 
+We can see here that the Pseudo R Squared for the BART model is significantly higher than that of their OLS model. 
+
 ```{r}
 plot_convergence_diagnostics(m.BART)
 
 ```
 
 ```{r}
+
 plot_y_vs_yhat(m.BART)
 
 ```
 
 ```{r}
-  try(
-
-    for (i in 1:length(m.BART[["training_data_features"]])) {
-  
-        pd_plot(m.BART,  m.BART[["training_data_features"]][i])
-
-    }
-  )
+pd_plot(m.BART,  m.BART[["training_data_features"]][1])
 ```
 
+
+
+Great! The main effect mirrors the researcher's findings very well, but with much wider confidence intervals.
+
+# Optimal Governance 
+
+Carey and Hix focused used their models to estimate which district magnitudes would be best for optomizing governance. This means for example, they took the median of the `disprop` variable and then said values below the median were idea and those above where less than ideal. 
+
+Let's try something a bit more varied. Let's try spliting the data into 3rds and then take the bottom third as ideal.
+
+```{r}
+X <- df %>% 
+  select(disprop, 
+         dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>%
+  mutate(ideal_disprop = ifelse(disprop < quantile(disprop, probs = seq(0, 1, by = 1/3))[[2]], 1, 0)) %>% 
+  na.omit()
+
+y <- as.factor(X$ideal_disprop)
+
+X <- X %>% 
+  select(!c(disprop, ideal_disprop))
+
+```
+
+
+
+```{r}
+m.BART <- bartMachine(X = X, y = y)
+m.BART
+```
+
+```{r}
+pd_plot(m.BART,  m.BART[["training_data_features"]][1])
+```
+
+
+Here we see that a high district magnitude will be needed holding all else equal.
+
+
+```{r}
+
+y_hat_class = predict(m.BART, X, type = "class")
+
+
+test <- cbind(df, "Predicted Ideal" = y_hat_class) %>% 
+  select(country, `Predicted Ideal`, election_yr, growth, gini, federal, pres) 
+
+```
+
+## Accountability
+
+```{r}
+X <- df %>% 
+  select(enps, 
+         dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>%
+  mutate(ideal_enps = ifelse(enps < quantile(enps, probs = seq(0, 1, by = 1/3))[[2]], 1, 0)) %>% 
+  na.omit()
+
+y <- as.factor(X$ideal_enps)
+
+X <- X %>% 
+  select(!c(enps, ideal_enps))
+```
+
+
+```{r}
+m.BART <- bartMachine(X = X, y = y)
+m.BART
+```
+
+```{r}
+pd_plot(m.BART,  m.BART[["training_data_features"]][1])
+```
+
+# Are there "Ideal" countries?
+
+
+Let's say we want better than median Accountability and better than 2/3rds of representation
+```{r}
+X <- df %>% 
+  select(enps, disprop, country,
+         dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>%
+  mutate(ideal_enps = ifelse(enps < quantile(enps, probs = seq(0, 1, by = 1/2))[[2]], 1, 0)) %>% 
+  mutate(ideal_disprop = ifelse(enps < quantile(disprop, probs = seq(0, 1, by = 1/3))[[2]], 1, 0)) %>% 
+  # select(country, ideal_enps, ideal_disprop) %>% 
+  mutate(ideal = ifelse(ideal_enps == 1 & ideal_disprop == 1, 1, 0)) %>% 
+  na.omit()
+
+y <- as.factor(X$ideal)
+
+X <- X %>% 
+  select(!c(enps, ideal_enps, ideal_disprop, ideal, country, disprop))
+```
+
+```{r}
+m.BART <- bartMachine(X = X, y = y)
+m.BART
+```
+
+```{r}
+pd_plot(m.BART,  m.BART[["training_data_features"]][1])
+```
+
+Here we can see that District Magnitude is Significant and there is no reason to limit the threshold to an arbitrarily low number of seats.
+
+# Can we improve a country?
+
+Let's take Chile, can we improve Chile?
+
+```{r}
+Chile <- df %>% 
+  select(enps, disprop, country,
+         dist_mag_medians, pres, legal_thresh, MMPL, compensatory, 
+         ethnic_fract_fearon, hybrid , election_yr, pol_freedom, econ_freedom, 
+         population, gdp_head, growth , age_dem, federal, latitude, col_uk, 
+         col_sp_po, col_oth, americas, former_com, pacific, s_asia,  gini, africa_me) %>%
+  mutate(ideal_enps = ifelse(enps < quantile(enps, probs = seq(0, 1, by = 1/2))[[2]], 1, 0)) %>% 
+  mutate(ideal_disprop = ifelse(enps < quantile(disprop, probs = seq(0, 1, by = 1/3))[[2]], 1, 0)) %>% 
+  # select(country, ideal_enps, ideal_disprop) %>% 
+  mutate(ideal = ifelse(ideal_enps == 1 & ideal_disprop == 1, 1, 0)) %>% 
+  filter(country == "Chile")
+
+```
+Let's confirm that Chile is not seen as an ideal country.
+
+```{r}
+
+Chile_changed = predict(m.BART, X, type = "class")
+
+Chile_changed <- cbind(Chile_changed, X)
+
+Chile_changed %>% 
+  filter(ethnic_fract_fearon < 0.498) %>% 
+  filter(ethnic_fract_fearon > 0.496) 
+```
+
+It's not.
+
+Now let's see what would happen if we changed their electoral rules to be more representative.
+
+```{r}
+
+X2 <- X %>% 
+  mutate(dist_mag_medians = ifelse(ethnic_fract_fearon < 0.498 & ethnic_fract_fearon > 0.496,
+                                   20 , dist_mag_medians))
+```
+
+```{r}
+Chile_changed = predict(m.BART, X2, type = "class")
+
+Chile_changed <- cbind(Chile_changed, X2)
+
+Chile_changed %>% 
+  filter(ethnic_fract_fearon < 0.498) %>% 
+  filter(ethnic_fract_fearon > 0.496) 
+
+```
+
+Its not enough...
+
+
+Let's also add federlaism?
+
+```{r}
+X2 <- X %>% 
+  # mutate(dist_mag_medians = ifelse(ethnic_fract_fearon < 0.498 & ethnic_fract_fearon > 0.496,
+  #                                  6 , dist_mag_medians))
+  # # %>% 
+  mutate(federal = ifelse(ethnic_fract_fearon < 0.498 & ethnic_fract_fearon > 0.496,
+                                   1 , federal))
+
+Chile_changed = predict(m.BART, X2, type = "class")
+
+Chile_changed <- cbind(Chile_changed, X2)
+
+Chile_changed %>% 
+  filter(ethnic_fract_fearon < 0.498) %>% 
+  filter(ethnic_fract_fearon > 0.496) 
+  
+```
+
+Federalism seems to fix it?!?! Federalism is more important than magnitude.
+
+Since that is the case, let's look at if Federalism is statistically significant.
+
+```{r}
+pd_plot(m.BART,  m.BART[["training_data_features"]][15])
+```
+
+Interesting! On average Federalism makes things worse. In Chile, however, Federalism makes things better. This means that the BART model is finding tailored electoral and governmental rules for each country.
