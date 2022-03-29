@@ -289,3 +289,13 @@ pd_plot(m.BART,  m.BART[["training_data_features"]][15])
 ```
 
 Interesting! On average Federalism makes things worse. In Chile, however, Federalism makes things better. This means that the BART model is finding tailored electoral and governmental rules for each country.
+
+# Variable selection
+
+Perhaps its possible that there are more important predictors of ideal governance.
+
+```{r}
+var_sel <- var_selection_by_permute(m.BART,
+                                    bottom_margin = 2)
+```
+
